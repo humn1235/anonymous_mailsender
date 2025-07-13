@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Anonymous Mailer</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background-color: #0a0a12;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas#starfield {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      background-color: transparent;
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 420px;
+      box-shadow: 0 0 16px rgba(15, 98, 254, 0.4);
+      backdrop-filter: blur(12px);
+    }
+
+    h2 {
+      margin-bottom: 1rem;
+      text-align: center;
+      color: #7abaff;
+    }
+
+    input, textarea {
+      width: 100%;
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      font-size: 1rem;
+      font-weight: 500;
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.08);
+      transition: all 0.3s ease;
+      will-change: transform, box-shadow;
+    }
+
+    input:hover, textarea:hover {
+      background: rgba(15, 98, 254, 0.15);
+      box-shadow: 0 0 12px rgba(15, 98, 254, 0.4);
+      transform: scale(1.03);
+    }
+
+    input:focus, textarea:focus {
+      background: rgba(15, 98, 254, 0.25);
+      box-shadow: 0 0 18px #0f62fe;
+      transform: scale(1.05);
+      outline: none;
+    }
+
+    button {
+      margin-top: 1rem;
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #0f62fe, #1a75ff);
+      border: none;
+      font-weight: 700;
+      font-size: 1rem;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(15, 98, 254, 0.4);
+      transition: all 0.3s ease, transform 0.15s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button:hover {
+      background: linear-gradient(145deg, #1a75ff, #0f62fe);
+      transform: translateY(-1px) scale(1.02);
+      box-shadow: 0 6px 18px rgba(15, 98, 254, 0.6);
+    }
+
+    button:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(15, 98, 254, 0.3);
+    }
+
+    button.loading {
+      pointer-events: none;
+      color: transparent;
+    }
+
+    button.loading::after {
+      content: "Sending...";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      text-align: center;
+      color: #ffffffcc;
+    }
+
+    #status {
+      margin-top: 1rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      min-height: 24px;
+      color: #a0cfff;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div class="container">
+  <h2>Send Anonymous Email</h2>
+  <input id="to" type="email" placeholder="Recipient email" />
+  <textarea id="message" rows="6" placeholder="Your message"></textarea>
+  <button id="sendBtn">Send</button>
+  <p id="status"></p>
+</div>
+
+<script>
+  // Yıldızlar ve fare etkileşimli animasyon
+  const canvas = document.getElementById('starfield');
+  const ctx = canvas.getContext('2d');
+  let width, height;
+  let stars = [];
+  let mouseX = 0, mouseY = 0;
+  const STAR_COUNT = 100;
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    stars = Array.from({ length: STAR_COUNT }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      r: Math.random() * 1.5 + 0.5,
+      alpha: Math.random() * 0.8 + 0.2,
+      vx: (Math.random() - 0.5) * 0.1,  // hız X
+      vy: (Math.random() - 0.5) * 0.1   // hız Y
+    }));
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+    for (let s of stars) {
+      // Pozisyonu hız kadar güncelle
+      s.x += s.vx;
+      s.y += s.vy;
+
+      // Ekran dışına çıkınca karşı taraftan devam et
+      if (s.x < 0) s.x = width;
+      else if (s.x > width) s.x = 0;
+
+      if (s.y < 0) s.y = height;
+      else if (s.y > height) s.y = 0;
+
+      // Fare ile parallax efekti
+      let dx = (mouseX - width / 2) * s.r * 0.01;
+      let dy = (mouseY - height / 2) * s.r * 0.01;
+
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+      ctx.arc(s.x + dx, s.y + dy, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  resize();
+  animate();
+
+  // Input ve textarea fare efekti
+  const inputs = document.querySelectorAll('input, textarea');
+  window.addEventListener('mousemove', e => {
+    inputs.forEach(input => {
+      const rect = input.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 150) {
+        const scale = 1 + (150 - dist) / 800;
+        const glow = (150 - dist) / 250;
+        input.style.transform = `scale(${scale})`;
+        input.style.boxShadow = `0 0 12px rgba(15, 98, 254, ${glow})`;
+      } else {
+        input.style.transform = '';
+        input.style.boxShadow = '';
+      }
+    });
+  });
+
+  // Gönder butonu ve mail gönderimi
+  const btn = document.getElementById('sendBtn');
+  btn.addEventListener('click', async () => {
+    const to = document.getElementById('to').value.trim();
+    const message = document.getElementById('message').value.trim();
+    const statusEl = document.getElementById('status');
+
+    if (!to || !message) {
+      statusEl.textContent = 'Please fill in all fields.';
+      return;
+    }
+
+    btn.classList.add('loading');
+    statusEl.textContent = 'Sending...';
+
+    try {
+      const res = await fetch('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, message })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        statusEl.textContent = '✅ Email sent!';
+        document.getElementById('to').value = '';
+        document.getElementById('message').value = '';
+      } else {
+        statusEl.textContent = '❌ Failed to send: ' + (data.error || 'Unknown error');
+      }
+    } catch (err) {
+      statusEl.textContent = '❌ Error: ' + err.message;
+    }
+
+    btn.classList.remove('loading');
+  });
+</script>
+
+</body>
+</html>
